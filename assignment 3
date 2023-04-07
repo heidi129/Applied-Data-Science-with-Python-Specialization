@@ -1,0 +1,232 @@
+import pandas as pd
+import numpy as np
+energy = pd.read_excel('assets/Energy Indicators.xls',
+                           header = 0,
+                           skipfooter=0)
+energy = energy.drop(['Unnamed: 0', 'Unnamed: 1'], axis=1)
+energy = energy[17:243]
+energy.rename(columns={'Unnamed: 2': 'Country','Unnamed: 3':'Energy Supply','Unnamed: 4':'Energy Supply per Capita','Unnamed: 5':'% Renewable'}, inplace=True)
+    # another way to rename a column is to pull the column names using column index then assign it to df.drop. This is helpful when you don't wanna write the column names.
+    # energy = energy.drop(energy.columns[[0, 1]], axis=1)
+energy.replace('...', np.nan,inplace = True)
+energy['Energy Supply'] *= 1000000
+def remove_digit(data):
+    newData = ''.join([i for i in data if not i.isdigit()])
+    i = newData.find('(')
+    if i>-1: newData = newData[:i]
+    return newData.strip()
+
+energy['Country'] = energy['Country'].apply(remove_digit)
+di = {"Republic of Korea": "South Korea",
+"United States of America": "United States",
+"United Kingdom of Great Britain and Northern Ireland": "United Kingdom",
+"China, Hong Kong Special Administrative Region": "Hong Kong"}
+energy.replace({"Country": di},inplace = True)
+# see all unique values in the country column
+# energy.Country.unique()
+    
+    ###################################################################################
+GDP = pd.read_csv('assets/world_bank.csv', skiprows=4)
+GDP.replace({"Korea, Rep.": "South Korea", 
+            "Iran, Islamic Rep.": "Iran",
+            "Hong Kong SAR, China": "Hong Kong"}, inplace=True)
+GDP.rename(columns={'Country Name': 'Country'}, inplace=True)
+
+ScimEn = pd.read_excel('assets/scimagojr-3.xlsx')
+
+def answer_one():
+    df = pd.merge(pd.merge(energy, GDP, on='Country'), ScimEn, on='Country')
+    df.set_index('Country',inplace=True)
+    df = df[['Rank', 'Documents', 'Citable documents', 'Citations', 'Self-citations', 'Citations per document', 'H index', 'Energy Supply', 'Energy Supply per Capita', '% Renewable', '2006', '2007', '2008', '2009', '2010', '2011', '2012', '2013', '2014', '2015']]
+    df = (df.loc[df['Rank'].isin([i for i in range(1, 16)])])
+    df.sort_values(by=['Rank'] ,ascending=True, inplace=True)
+    return df
+
+answer_one()
+
+
+def answer_three():
+    # df = answer_one()
+    # df['avgGDP'] = answer_one().iloc[:, 10:19].mean(axis=1)
+    # return df.sort_values(by=['avgGDP'] ,ascending=False)
+    Top15 = answer_one()
+    rows = ['2006', '2007', '2008',
+           '2009', '2010', '2011', '2012', '2013', '2014', '2015']
+    Top15["avgGDP"] = answer_one()[rows].mean(axis=1)
+    # Top15["avgGDP"] = answer_one().iloc[:, 10:19].mean(axis=1)
+    return Top15.sort_values("avgGDP",ascending=False)["avgGDP"]
+    
+    
+ def answer_four():
+    # YOUR CODE HERE
+    # get the dataframe
+    Top15 = answer_one()
+    # create a new column "AvgGDP" using the answer_three function
+    Top15["AvgGDP"] = answer_three()
+    # sort values from big to small across all years column
+    Top15.sort_values("AvgGDP",ascending=False,inplace=True)
+    # get the 6th largest number in 2015
+    final=Top15.iloc[5]['2015']
+    # get the 6th largest number in 2006
+    initial=Top15.iloc[5]['2006']
+    return abs(final-initial)
+    raise NotImplementedError()
+    
+answer_four()
+
+
+def answer_five():
+    # YOUR CODE HERE
+    df = answer_one()
+    # pull an array of the column
+    # arr = df['Energy Supply per Capita']
+    # return np.mean(arr)
+    # or you can use this method
+    return df['Energy Supply per Capita'].mean()
+    raise NotImplementedError()
+
+answer_five()
+
+def answer_six():
+    # YOUR CODE HERE
+    df = answer_one()
+    # df = df.sort_values(by='% Renewable', ascending = False)
+    # you need to set index to use the iloc function
+    df['Country']=df.index
+    country = df[df['% Renewable']==df['% Renewable'].max()].iloc[0]['Country']
+    maxvalue = df['% Renewable'].max()
+    return country, maxvalue
+    raise NotImplementedError()
+    
+answer_six()
+
+def answer_seven():
+    # YOUR CODE HERE
+    df = answer_one()
+    # total = df['Citations'].sum()
+    df['ratio'] = df['Self-citations']/df['Citations']
+    df['Country']=df.index
+    # df = df[df['ratio']==df['ratio'].max()].iloc[0]['Country']
+    # return df
+    country = df[df['ratio']==df['ratio'].max()].iloc[0]['Country']
+    maxvalue = df['ratio'].max()
+    return country, maxvalue
+    raise NotImplementedError()
+    
+answer_seven()
+
+def answer_eight():
+    # YOUR CODE HERE
+    df = answer_one()
+    # create new column population
+    df['pop'] = df['Energy Supply']/df['Energy Supply per Capita']
+    # sort values by population values at descendin order
+    df.sort_values("pop",ascending=False,inplace=True)
+    # get the 3rd largest number
+    thirdpop=df.iloc[2]['pop']
+    df['Country']=df.index
+    country = df[df['pop']==thirdpop].iloc[0]['Country']
+    return country
+    raise NotImplementedError()
+    
+answer_eight()
+
+
+def answer_nine():
+    # YOUR CODE HERE
+    df = answer_one()
+    df['PopEst'] = df['Energy Supply'] / df['Energy Supply per Capita']
+    df['Citable docs per Capita'] = df['Citable documents'] / df['PopEst']
+    corr = df['Citable docs per Capita'].corr(df['Energy Supply per Capita'])
+    return corr
+    raise NotImplementedError()
+
+answer_nine()
+
+def answer_ten():
+    # YOUR CODE HERE
+    df = answer_one()
+    renewable_mean = df['% Renewable'].median()
+    # axis = 1 apply across columns not rows
+    df['HighRenew']=(df['% Renewable']>=renewable_mean)*1
+    return df.sort_values('Rank')['HighRenew']
+    raise NotImplementedError()
+answer_ten()
+
+
+def answer_eleven():
+    # YOUR CODE HERE
+    df = answer_one()
+    ContinentDict  = {'China':'Asia', 
+                  'United States':'North America', 
+                  'Japan':'Asia', 
+                  'United Kingdom':'Europe', 
+                  'Russian Federation':'Europe', 
+                  'Canada':'North America', 
+                  'Germany':'Europe', 
+                  'India':'Asia',
+                  'France':'Europe', 
+                  'South Korea':'Asia', 
+                  'Italy':'Europe', 
+                  'Spain':'Europe', 
+                  'Iran':'Asia',
+                  'Australia':'Australia', 
+                  'Brazil':'South America'}
+    groups = pd.DataFrame(columns = ['size', 'sum', 'mean', 'std'])
+    df['PopEst'] = df['Energy Supply'] / df['Energy Supply per Capita']
+    for group, frame in df.groupby(ContinentDict):
+        groups.loc[group] =  [len(frame), frame['PopEst'].sum(),frame['PopEst'].mean(),frame['PopEst'].std()]
+    return groups
+    raise NotImplementedError()
+    
+answer_eleven()
+
+
+def answer_twelve():
+    Top15 = answer_one()
+    ContinentDict  = {'China':'Asia', 
+                  'United States':'North America', 
+                  'Japan':'Asia', 
+                  'United Kingdom':'Europe', 
+                  'Russian Federation':'Europe', 
+                  'Canada':'North America', 
+                  'Germany':'Europe', 
+                  'India':'Asia',
+                  'France':'Europe', 
+                  'South Korea':'Asia', 
+                  'Italy':'Europe', 
+                  'Spain':'Europe', 
+                  'Iran':'Asia',
+                  'Australia':'Australia', 
+                  'Brazil':'South America'}
+    Top15["bins"] = pd.cut(Top15["% Renewable"], 5)
+    return Top15.groupby([ContinentDict, Top15['bins']]).size()
+answer_twelve()
+
+
+
+def answer_thirteen():
+    Top15 = answer_one()
+    Top15["PopEst"] = Top15['Energy Supply'] / Top15['Energy Supply per Capita']
+    #Top15["Population"] = Top15["Population"]
+    
+    return Top15['PopEst'].apply(lambda x: '{0:,}'.format(x))
+answer_thirteen()
+
+
+def plot_optional():
+    import matplotlib as plt
+    %matplotlib inline
+    Top15 = answer_one()
+    ax = Top15.plot(x='Rank', y='% Renewable', kind='scatter', 
+                    c=['#e41a1c','#377eb8','#e41a1c','#4daf4a','#4daf4a','#377eb8','#4daf4a','#e41a1c',
+                       '#4daf4a','#e41a1c','#4daf4a','#4daf4a','#e41a1c','#dede00','#ff7f00'], 
+                    xticks=range(1,16), s=6*Top15['2014']/10**10, alpha=.75, figsize=[16,6]);
+
+    for i, txt in enumerate(Top15.index):
+        ax.annotate(txt, [Top15['Rank'][i], Top15['% Renewable'][i]], ha='center')
+
+    print("This is an example of a visualization that can be created to help understand the data. \
+This is a bubble chart showing % Renewable vs. Rank. The size of the bubble corresponds to the countries' \
+2014 GDP, and the color corresponds to the continent.")
+
